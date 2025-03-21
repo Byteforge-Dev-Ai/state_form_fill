@@ -103,7 +103,7 @@ const updateProfileSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Get authorization header
-    const authHeader = request.headers.get('authorization');
+    const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
     if (!authHeader) {
       return NextResponse.json(
         {
@@ -134,6 +134,18 @@ export async function GET(request: NextRequest) {
     
     // Get user data from our database
     const userService = createUserService();
+    
+    if (!authUser.email) {
+      return NextResponse.json(
+        {
+          status: 400,
+          message: 'User email is missing',
+          code: 'EMAIL_MISSING'
+        },
+        { status: 400 }
+      );
+    }
+    
     const user = await userService.getUserByEmail(authUser.email);
     
     if (!user) {
@@ -176,7 +188,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Get authorization header
-    const authHeader = request.headers.get('authorization');
+    const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
     if (!authHeader) {
       return NextResponse.json(
         {
@@ -206,7 +218,31 @@ export async function PUT(request: NextRequest) {
     }
     
     // Parse request body
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+      
+      // Check if body is empty (null or undefined or empty object)
+      if (!body || Object.keys(body).length === 0) {
+        return NextResponse.json(
+          {
+            status: 400,
+            message: 'Invalid or empty request body',
+            code: 'INVALID_INPUT'
+          },
+          { status: 400 }
+        );
+      }
+    } catch (error) {
+      return NextResponse.json(
+        {
+          status: 400,
+          message: 'Invalid or empty request body',
+          code: 'INVALID_INPUT'
+        },
+        { status: 400 }
+      );
+    }
     
     // Validate input
     const validationResult = updateProfileSchema.safeParse(body);
@@ -226,6 +262,18 @@ export async function PUT(request: NextRequest) {
     
     // Get user data from our database
     const userService = createUserService();
+    
+    if (!authUser.email) {
+      return NextResponse.json(
+        {
+          status: 400,
+          message: 'User email is missing',
+          code: 'EMAIL_MISSING'
+        },
+        { status: 400 }
+      );
+    }
+    
     const user = await userService.getUserByEmail(authUser.email);
     
     if (!user) {

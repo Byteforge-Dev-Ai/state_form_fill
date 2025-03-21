@@ -3,28 +3,57 @@ import { createUserService } from '../factories/serviceFactory';
 import { supabaseClient } from '../supabase/client';
 
 export async function authenticateUser(request: NextRequest) {
-  // Extract token from Authorization header
-  const authHeader = request.headers.get('Authorization');
+  console.log('=== Authentication Debug ===');
+  console.log('URL:', request.url);
+  
+  // Log headers safely without using spread operator
+  const headersObj: Record<string, string> = {};
+  request.headers.forEach((value, key) => {
+    headersObj[key] = value;
+  });
+  console.log('Headers:', JSON.stringify(headersObj));
+  
+  // Extract token from Authorization header - check both casing options
+  const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
+  console.log('Auth header found:', !!authHeader);
+  
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('No valid auth header found');
     return null;
   }
   
   const token = authHeader.split(' ')[1];
   if (!token) {
+    console.log('No token found in auth header');
     return null;
   }
   
   try {
+    console.log('Verifying token with Supabase...');
     // Verify the token with Supabase Auth
     const { data: { user: authUser }, error } = await supabaseClient.auth.getUser(token);
     
-    if (error || !authUser) {
+    if (error) {
+      console.log('Supabase auth error:', error);
       return null;
     }
+    
+    if (!authUser) {
+      console.log('No auth user found');
+      return null;
+    }
+    
+    console.log('Auth user found:', authUser.id);
     
     // Get the full user profile from our repository
     const userService = createUserService();
     const user = await userService.getUser(authUser.id);
+    
+    if (!user) {
+      console.log('User not found in database');
+    } else {
+      console.log('User found:', user.id, user.email, user.role);
+    }
     
     return user;
   } catch (error) {

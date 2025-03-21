@@ -467,6 +467,395 @@ const createOpenAPISpec = () => {
         },
       },
     },
+    '/api/v1/user-identifiers': {
+      get: {
+        summary: 'List all business identifiers',
+        tags: ['User Identifiers'],
+        description: 'List all business identifiers for current user',
+        security: [{ BearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'List of user identifiers',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: {
+                        type: 'string',
+                        format: 'uuid',
+                      },
+                      legal_name: {
+                        type: 'string',
+                      },
+                      nc_dor_id: {
+                        type: 'string',
+                      },
+                      trade_name: {
+                        type: 'string',
+                      },
+                      address: {
+                        type: 'string',
+                      },
+                      city: {
+                        type: 'string',
+                      },
+                      state: {
+                        type: 'string',
+                      },
+                      zip_code: {
+                        type: 'string',
+                      },
+                      created_at: {
+                        type: 'string',
+                        format: 'date-time',
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Unauthorized',
+          },
+          '500': {
+            description: 'Server error',
+          },
+        },
+      },
+      post: {
+        summary: 'Create a new business identifier',
+        tags: ['User Identifiers'],
+        description: 'Create a new business identifier for the current user',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['legal_name', 'nc_dor_id'],
+                properties: {
+                  legal_name: {
+                    type: 'string',
+                    description: 'Legal name of the business',
+                    example: 'Carolina Cigar Co.',
+                  },
+                  nc_dor_id: {
+                    type: 'string',
+                    description: 'North Carolina Department of Revenue ID',
+                    example: 'NC12345678',
+                  },
+                  trade_name: {
+                    type: 'string',
+                    description: 'Trade name (if different from legal name)',
+                    example: 'Carolina Cigars',
+                  },
+                  address: {
+                    type: 'string',
+                    description: 'Business address',
+                    example: '123 Main St',
+                  },
+                  city: {
+                    type: 'string',
+                    description: 'City',
+                    example: 'Charlotte',
+                  },
+                  state: {
+                    type: 'string',
+                    description: 'State',
+                    example: 'NC',
+                  },
+                  zip_code: {
+                    type: 'string',
+                    description: 'ZIP code',
+                    example: '28202',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'User identifier created successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: {
+                      type: 'string',
+                      format: 'uuid',
+                    },
+                    legal_name: {
+                      type: 'string',
+                    },
+                    nc_dor_id: {
+                      type: 'string',
+                    },
+                    trade_name: {
+                      type: 'string',
+                    },
+                    address: {
+                      type: 'string',
+                    },
+                    city: {
+                      type: 'string',
+                    },
+                    state: {
+                      type: 'string',
+                    },
+                    zip_code: {
+                      type: 'string',
+                    },
+                    created_at: {
+                      type: 'string',
+                      format: 'date-time',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'Invalid request data',
+          },
+          '401': {
+            description: 'Unauthorized',
+          },
+          '500': {
+            description: 'Server error',
+          },
+        },
+      },
+    },
+    '/api/v1/user-identifiers/{id}': {
+      get: {
+        summary: 'Get a specific business identifier',
+        tags: ['User Identifiers'],
+        description: 'Get details of a specific business identifier',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'ID of the user identifier to retrieve',
+            schema: {
+              type: 'string',
+              format: 'uuid',
+            },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'User identifier details',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: {
+                      type: 'string',
+                      format: 'uuid',
+                    },
+                    legal_name: {
+                      type: 'string',
+                    },
+                    nc_dor_id: {
+                      type: 'string',
+                    },
+                    trade_name: {
+                      type: 'string',
+                    },
+                    address: {
+                      type: 'string',
+                    },
+                    city: {
+                      type: 'string',
+                    },
+                    state: {
+                      type: 'string',
+                    },
+                    zip_code: {
+                      type: 'string',
+                    },
+                    created_at: {
+                      type: 'string',
+                      format: 'date-time',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'Invalid ID',
+          },
+          '401': {
+            description: 'Unauthorized',
+          },
+          '404': {
+            description: 'User identifier not found',
+          },
+          '500': {
+            description: 'Server error',
+          },
+        },
+      },
+      put: {
+        summary: 'Update a business identifier',
+        tags: ['User Identifiers'],
+        description: 'Update a specific business identifier',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'ID of the user identifier to update',
+            schema: {
+              type: 'string',
+              format: 'uuid',
+            },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  legal_name: {
+                    type: 'string',
+                    description: 'Legal name of the business',
+                  },
+                  nc_dor_id: {
+                    type: 'string',
+                    description: 'North Carolina Department of Revenue ID',
+                  },
+                  trade_name: {
+                    type: 'string',
+                    description: 'Trade name (if different from legal name)',
+                  },
+                  address: {
+                    type: 'string',
+                    description: 'Business address',
+                  },
+                  city: {
+                    type: 'string',
+                    description: 'City',
+                  },
+                  state: {
+                    type: 'string',
+                    description: 'State',
+                  },
+                  zip_code: {
+                    type: 'string',
+                    description: 'ZIP code',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'User identifier updated successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    id: {
+                      type: 'string',
+                      format: 'uuid',
+                    },
+                    legal_name: {
+                      type: 'string',
+                    },
+                    nc_dor_id: {
+                      type: 'string',
+                    },
+                    trade_name: {
+                      type: 'string',
+                    },
+                    address: {
+                      type: 'string',
+                    },
+                    city: {
+                      type: 'string',
+                    },
+                    state: {
+                      type: 'string',
+                    },
+                    zip_code: {
+                      type: 'string',
+                    },
+                    updated_at: {
+                      type: 'string',
+                      format: 'date-time',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'Invalid request data',
+          },
+          '401': {
+            description: 'Unauthorized',
+          },
+          '404': {
+            description: 'User identifier not found',
+          },
+          '500': {
+            description: 'Server error',
+          },
+        },
+      },
+      delete: {
+        summary: 'Delete a business identifier',
+        tags: ['User Identifiers'],
+        description: 'Delete a specific business identifier',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'ID of the user identifier to delete',
+            schema: {
+              type: 'string',
+              format: 'uuid',
+            },
+          },
+        ],
+        responses: {
+          '204': {
+            description: 'User identifier deleted successfully',
+          },
+          '400': {
+            description: 'Invalid ID',
+          },
+          '401': {
+            description: 'Unauthorized',
+          },
+          '404': {
+            description: 'User identifier not found',
+          },
+          '500': {
+            description: 'Server error',
+          },
+        },
+      },
+    },
   };
   
   return spec;
