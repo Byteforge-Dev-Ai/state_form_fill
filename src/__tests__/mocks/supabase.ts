@@ -11,6 +11,8 @@ jest.mock('@/lib/supabase/client', () => {
       signOut: jest.Mock;
       getSession: jest.Mock;
       getUser: jest.Mock;
+      resetPasswordForEmail: jest.Mock;
+      updateUser: jest.Mock;
       admin?: {
         signOut: jest.Mock;
       };
@@ -31,6 +33,8 @@ jest.mock('@/lib/supabase/client', () => {
       signOut: jest.fn(),
       getSession: jest.fn(),
       getUser: jest.fn(),
+      resetPasswordForEmail: jest.fn(),
+      updateUser: jest.fn(),
       admin: {
         signOut: jest.fn()
       }
