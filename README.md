@@ -20,6 +20,28 @@ An API-first application to automate the process of filling North Carolina cigar
 - **Documentation**: Swagger/OpenAPI
 - **Deployment**: Vercel (frontend), Supabase (backend)
 
+## Development Log
+
+This project maintains a detailed development log to track progress, issues, and decisions made during the development process.
+
+### Log Location
+All development logs are stored in the `devlogs/` directory.
+
+### Log Format
+- Each development session is documented in a separate file following the ISO date format: `DEVLOG-YYYY-MM-DD.md`
+- New log files are created for each development session
+
+### Log Contents
+Each log typically includes:
+- Features implemented
+- Issues resolved
+- Decisions made
+- Next steps planned
+- General notes and observations
+
+### Latest Development Log
+See [devlogs/DEVLOG-2024-07-25.md](./devlogs/DEVLOG-2024-07-25.md) for the most recent development activities.
+
 ## Getting Started
 
 ### Prerequisites
@@ -61,7 +83,7 @@ An API-first application to automate the process of filling North Carolina cigar
    npm run dev
    ```
 
-7. Access the application at http://localhost:3000 and API docs at http://localhost:3000/api-docs
+7. Access the application at http://localhost:3000 and API docs at http://localhost:3000/api/swagger
 
 ## Database Schema
 
@@ -79,7 +101,7 @@ A full ERD and schema documentation is available in the `/docs` directory.
 
 ## API Documentation
 
-API documentation is available at the `/api-docs` endpoint when running the application. The API follows RESTful principles and includes comprehensive validation and error handling.
+API documentation is available at the `/api/swagger` endpoint when running the application. The API follows RESTful principles and includes comprehensive validation and error handling.
 
 ## License
 

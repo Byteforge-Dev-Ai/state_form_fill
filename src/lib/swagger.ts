@@ -14,11 +14,11 @@ export const swaggerOptions: SwaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:3000/api',
+        url: 'http://localhost:3000',
         description: 'Local Development Server',
       },
       {
-        url: 'https://nc-cigar-form-filler.example.com/api',
+        url: 'https://nc-cigar-form-filler.example.com',
         description: 'Production Server',
       },
     ],
@@ -29,9 +29,29 @@ export const swaggerOptions: SwaggerOptions = {
           scheme: 'bearer',
           bearerFormat: 'JWT',
         },
+        ApiKeyAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'Authorization',
+          description: 'JWT token obtained from /auth/login',
+        },
+        EmailPassword: {
+          type: 'oauth2',
+          flows: {
+            password: {
+              tokenUrl: '/api/v1/auth/login',
+              scopes: {}
+            }
+          },
+          description: 'Login with email and password to get JWT token'
+        }
       },
     },
-    security: [{ BearerAuth: [] }],
+    security: [
+      { BearerAuth: [] },
+      { ApiKeyAuth: [] },
+      { EmailPassword: [] }
+    ],
     tags: [
       { name: 'Auth', description: 'Authentication and user management endpoints' },
       { name: 'Forms', description: 'Form management and submission endpoints' },

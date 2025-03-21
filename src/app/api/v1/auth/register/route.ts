@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createUserService } from '@/lib/services/userService';
+import { createUserService } from '@/lib/factories/serviceFactory';
 import { supabaseClient } from '@/lib/supabase/client';
 
 // Validation schema
