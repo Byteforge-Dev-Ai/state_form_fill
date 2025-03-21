@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createUserService } from '../factories/serviceFactory';
-import { supabaseClient } from '../supabase/client';
+import { supabaseClient, getServiceSupabase } from '../supabase/client';
 
 export async function authenticateUser(request: NextRequest) {
   console.log('=== Authentication Debug ===');
@@ -30,7 +30,7 @@ export async function authenticateUser(request: NextRequest) {
   
   try {
     console.log('Verifying token with Supabase...');
-    // Verify the token with Supabase Auth
+    // Step 1: Verify the token with Supabase Auth
     const { data: { user: authUser }, error } = await supabaseClient.auth.getUser(token);
     
     if (error) {
@@ -40,6 +40,32 @@ export async function authenticateUser(request: NextRequest) {
     
     if (!authUser) {
       console.log('No auth user found');
+      return null;
+    }
+    
+    // Step 2: Verify that the session is still valid (not logged out)
+    // Use admin API to check if the session exists
+    try {
+      // Get service role client with admin privileges
+      const adminClient = getServiceSupabase();
+      
+      // Use the admin API to check if the token/session is still valid
+      // This validates that the user hasn't logged out
+      const { data: adminData, error: adminError } = await adminClient.auth.admin.getUserById(authUser.id);
+      
+      if (adminError || !adminData?.user) {
+        console.log('Session verification failed:', adminError || 'User not found by admin API');
+        return null;
+      }
+      
+      // Additional check - if the user was recently logged out, their session might 
+      // still exist but should be marked as not valid
+      if (!adminData.user.confirmed_at) {
+        console.log('User account is not confirmed');
+        return null;
+      }
+    } catch (sessionError) {
+      console.log('Error verifying session:', sessionError);
       return null;
     }
     

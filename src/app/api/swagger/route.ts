@@ -12,7 +12,7 @@ export async function GET() {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NC Cigar Form Filler API - Swagger UI</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.0.0/swagger-ui.css" />
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.2/swagger-ui.css" />
   <style>
     .custom-auth-wrapper {
       padding: 16px;
@@ -90,15 +90,26 @@ export async function GET() {
     </div>
   </div>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5.0.0/swagger-ui-bundle.js"></script>
-  <script src="https://unpkg.com/swagger-ui-dist@5.0.0/swagger-ui-standalone-preset.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.2/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.2/swagger-ui-standalone-preset.js"></script>
   <script>
     window.onload = function() {
       // Initialize Swagger UI
       window.ui = SwaggerUIBundle({
         url: "/api/docs",
         dom_id: '#swagger-ui',
-        deepLinking: true,
+        deepLinking: false,
+        defaultModelsExpandDepth: -1,
+        validatorUrl: null,
+        displayRequestDuration: true,
+        requestSnippetsEnabled: true,
+        tryItOutEnabled: true,
+        persistAuthorization: true,
+        withCredentials: true,
+        urls: null,
+        operationsSorter: 'alpha',
+        tagsSorter: 'alpha',
+        configUrl: null,
         presets: [
           SwaggerUIBundle.presets.apis,
           SwaggerUIStandalonePreset

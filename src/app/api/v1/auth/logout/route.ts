@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseClient } from '@/lib/supabase/client';
+import { supabaseClient, getServiceSupabase } from '@/lib/supabase/client';
 
 /**
  * @swagger
@@ -34,23 +34,53 @@ export async function POST(request: NextRequest) {
     // Extract token from header
     const token = authHeader.replace('Bearer ', '');
     
-    // Sign out from Supabase Auth
-    const { error } = await supabaseClient.auth.signOut();
-    
-    if (error) {
-      console.error('Logout error:', error);
+    try {
+      // First verify the token to get the user
+      const { data: { user }, error: verifyError } = await supabaseClient.auth.getUser(token);
+      
+      if (verifyError || !user) {
+        return NextResponse.json(
+          {
+            status: 401,
+            message: 'Invalid token',
+            code: 'INVALID_TOKEN'
+          },
+          { status: 401 }
+        );
+      }
+      
+      // Use the admin service role to revoke all sessions for this user
+      // This is a stronger approach than relying on client-side signOut
+      const adminClient = getServiceSupabase();
+      
+      // Sign out all sessions for this user (stronger than just the current session)
+      const { error } = await adminClient.auth.admin.signOut(token);
+      
+      if (error) {
+        console.error('Admin logout error:', error);
+        return NextResponse.json(
+          {
+            status: 500,
+            message: 'Error during logout',
+            code: 'LOGOUT_ERROR'
+          },
+          { status: 500 }
+        );
+      }
+      
+      // Return success with status 200 instead of 204 to ensure body is sent
+      return NextResponse.json({ success: true }, { status: 200 });
+    } catch (tokenError) {
+      console.error('Token verification error:', tokenError);
       return NextResponse.json(
         {
-          status: 500,
-          message: 'Error during logout',
-          code: 'LOGOUT_ERROR'
+          status: 401,
+          message: 'Invalid token',
+          code: 'INVALID_TOKEN'
         },
-        { status: 500 }
+        { status: 401 }
       );
     }
-    
-    // Return success
-    return new NextResponse(null, { status: 204 });
     
   } catch (error) {
     console.error('Logout error:', error);
