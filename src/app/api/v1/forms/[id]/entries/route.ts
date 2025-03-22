@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseClient } from '@/lib/supabase/client';
-import { createUserService } from '@/lib/factories/serviceFactory';
+import { createUserService, createFormEntryService } from '@/lib/factories/serviceFactory';
 
 /**
  * @swagger
@@ -134,65 +134,32 @@ export async function GET(
     
     console.log('User authenticated:', authenticatedUser);
     
-    // Verify that the form exists and user has access to it
-    // In a real implementation, you would check if the form belongs to the user
+    // Get form entries with filters from query parameters
     const formId = params.id;
-    
-    // For now, let's generate some mock entries data
-    const mockEntries = [
-      {
-        id: crypto.randomUUID(),
-        form_id: formId,
-        date_of_sale: '2023-05-15',
-        invoice_number: 'INV-001',
-        vendor_name: 'Premium Cigars Inc.',
-        cigar_description: 'Maduro Robusto',
-        number_of_cigars: 25,
-        cost_of_cigar: 12.99,
-        subtotal: 324.75,
-        tax_rate: 0.0595,
-        tax_amount: 19.32,
-        entry_index: 1,
-        created_at: '2023-05-15T10:30:00.000Z'
-      },
-      {
-        id: crypto.randomUUID(),
-        form_id: formId,
-        date_of_sale: '2023-05-20',
-        invoice_number: 'INV-002',
-        vendor_name: 'Habana Imports',
-        cigar_description: 'Connecticut Churchill',
-        number_of_cigars: 15,
-        cost_of_cigar: 15.49,
-        subtotal: 232.35,
-        tax_rate: 0.0595,
-        tax_amount: 13.82,
-        entry_index: 2,
-        created_at: '2023-05-20T14:45:00.000Z'
-      }
-    ];
-    
-    // Apply any query parameters for filtering
     const { searchParams } = new URL(request.url);
+    
+    // Extract query parameters
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const sort = searchParams.get('sort') || 'created_at';
-    const order = searchParams.get('order') || 'desc';
+    const order = (searchParams.get('order') || 'desc') as 'asc' | 'desc';
+    const vendor = searchParams.get('vendor') || undefined;
+    const startDate = searchParams.get('start_date') || undefined;
+    const endDate = searchParams.get('end_date') || undefined;
     
-    // Pagination calculation
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedEntries = mockEntries.slice(startIndex, endIndex);
-    
-    return NextResponse.json({
-      data: paginatedEntries,
-      pagination: {
-        total: mockEntries.length,
-        page,
-        limit,
-        pages: Math.ceil(mockEntries.length / limit)
-      }
+    // Use the form entry service to get entries
+    const formEntryService = createFormEntryService();
+    const result = await formEntryService.getAllByFormId(formId, authenticatedUser.id, {
+      vendor,
+      startDate,
+      endDate,
+      sort,
+      order,
+      page,
+      limit
     });
+    
+    return NextResponse.json(result);
     
   } catch (error) {
     console.error('Error fetching entries:', error);
@@ -327,30 +294,21 @@ export async function POST(
       }
     }
     
-    // Generate a UUID - in a real app, this would be done by the database
-    const entryId = crypto.randomUUID();
+    // Create the entry using the FormEntryService
+    const formEntryService = createFormEntryService();
     
-    // Mock the tax calculation
-    const taxRate = 0.0595;
-    const costMultiplier = 1.12;
-    const subtotal = Math.max((body.number_of_cigars * costMultiplier) - (body.cost_of_cigar * taxRate), 0);
-    
-    // Create the entry with calculated fields
-    const entry = {
-      id: entryId,
-      form_id: params.id,
-      date_of_sale: body.date_of_sale,
-      invoice_number: body.invoice_number || '',
-      vendor_name: body.vendor_name,
-      cigar_description: body.cigar_description,
-      number_of_cigars: body.number_of_cigars,
-      cost_of_cigar: body.cost_of_cigar,
-      subtotal,
-      tax_rate: taxRate,
-      tax_amount: subtotal,
-      entry_index: 1, // In a real app, this would be calculated
-      created_at: new Date().toISOString()
-    };
+    const entry = await formEntryService.create(
+      params.id,
+      user.id,
+      {
+        date_of_sale: body.date_of_sale,
+        invoice_number: body.invoice_number || '',
+        vendor_name: body.vendor_name,
+        cigar_description: body.cigar_description,
+        number_of_cigars: body.number_of_cigars,
+        cost_of_cigar: body.cost_of_cigar
+      }
+    );
     
     return NextResponse.json(entry, { status: 201 });
   } catch (error) {

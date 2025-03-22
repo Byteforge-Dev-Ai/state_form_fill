@@ -467,6 +467,78 @@ const createOpenAPISpec = () => {
         },
       },
     },
+    '/api/v1/tax-rates/effective-on/{date}': {
+      get: {
+        summary: 'Get tax rates effective on a specific date',
+        tags: ['Tax Rates'],
+        description: 'Retrieves all tax rates that are effective on the specified date',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: 'date',
+            in: 'path',
+            required: true,
+            schema: {
+              type: 'string',
+              format: 'date'
+            },
+            description: 'Date in YYYY-MM-DD format to check effective tax rates'
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Successfully retrieved tax rates',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: {
+                        type: 'string',
+                        format: 'uuid',
+                        description: 'Unique identifier for the tax rate'
+                      },
+                      product_type: {
+                        type: 'string',
+                        description: 'Type of product the tax applies to'
+                      },
+                      rate: {
+                        type: 'number',
+                        format: 'float',
+                        description: 'Tax rate percentage'
+                      },
+                      effective_date: {
+                        type: 'string',
+                        format: 'date',
+                        description: 'Date when the tax rate became effective'
+                      },
+                      created_at: {
+                        type: 'string',
+                        format: 'date-time',
+                        description: 'Date and time when the record was created'
+                      },
+                      updated_at: {
+                        type: 'string',
+                        format: 'date-time',
+                        description: 'Date and time when the record was last updated'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': {
+            description: 'Unauthorized'
+          },
+          '500': {
+            description: 'Server error'
+          }
+        }
+      }
+    },
     '/api/v1/user-identifiers': {
       get: {
         summary: 'List all business identifiers',
@@ -1856,15 +1928,143 @@ const createOpenAPISpec = () => {
     },
   };
 
-  spec.paths['/api/v1/forms/{formId}/entries/{id}'] = {
-    put: {
-      summary: 'Update a sales entry',
+  spec.paths['/api/v1/forms/{id}/entries/bulk'] = {
+    post: {
+      summary: 'Bulk import entries',
       tags: ['Entries'],
-      description: 'Update an existing sales entry',
+      description: 'Bulk import multiple sales entries from a CSV or Excel file to save time on data entry. The file should contain columns for all required fields.',
       security: [{ BearerAuth: [] }],
       parameters: [
         {
-          name: 'formId',
+          name: 'id',
+          in: 'path',
+          required: true,
+          description: 'ID of the form',
+          schema: {
+            type: 'string',
+            format: 'uuid',
+          },
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'multipart/form-data': {
+            schema: {
+              type: 'object',
+              properties: {
+                file: {
+                  type: 'string',
+                  format: 'binary',
+                  description: 'CSV or Excel file with entries data. Must include columns for: date_of_sale, invoice_number (optional), vendor_name, cigar_description, number_of_cigars, cost_of_cigar.',
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        '201': {
+          description: 'Entries imported successfully',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  imported: {
+                    type: 'integer',
+                    description: 'Number of successfully imported entries',
+                    example: 42
+                  },
+                  failed: {
+                    type: 'integer',
+                    description: 'Number of entries that failed to import',
+                    example: 3
+                  },
+                  errors: {
+                    type: 'array',
+                    description: 'Detailed information about failed imports',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        row: {
+                          type: 'integer',
+                          description: 'Row number in the file (1-based index, excluding header)',
+                          example: 5
+                        },
+                        message: {
+                          type: 'string',
+                          description: 'Human-readable error message explaining the validation failure',
+                          example: "Invalid date format in 'date_of_sale' column"
+                        },
+                      },
+                    },
+                    example: [
+                      {
+                        row: 3,
+                        message: "Missing required 'vendor_name' column"
+                      },
+                      {
+                        row: 7,
+                        message: "Invalid number in 'number_of_cigars' column"
+                      }
+                    ]
+                  },
+                },
+              },
+            },
+          },
+        },
+        '400': {
+          description: 'Invalid file or file format',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: {
+                    type: 'integer',
+                    example: 400
+                  },
+                  message: {
+                    type: 'string',
+                    example: 'Invalid file format. Only CSV and Excel files are supported.'
+                  },
+                  code: {
+                    type: 'string',
+                    example: 'INVALID_FILE_FORMAT'
+                  }
+                }
+              }
+            }
+          }
+        },
+        '401': {
+          description: 'Unauthorized',
+        },
+        '403': {
+          description: 'Forbidden',
+        },
+        '404': {
+          description: 'Form not found',
+        },
+        '500': {
+          description: 'Server error',
+        },
+      },
+    },
+  };
+
+  // Add entry detail endpoints
+  spec.paths['/api/v1/forms/{id}/entries/{entryId}'] = {
+    get: {
+      summary: 'Get a specific entry',
+      tags: ['Entries'],
+      description: 'Get details of a specific sales entry',
+      security: [{ BearerAuth: [] }],
+      parameters: [
+        {
+          name: 'id',
           in: 'path',
           required: true,
           description: 'ID of the form',
@@ -1874,10 +2074,115 @@ const createOpenAPISpec = () => {
           },
         },
         {
+          name: 'entryId',
+          in: 'path',
+          required: true,
+          description: 'ID of the entry',
+          schema: {
+            type: 'string',
+            format: 'uuid',
+          },
+        },
+      ],
+      responses: {
+        '200': {
+          description: 'Entry details',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'string',
+                    format: 'uuid',
+                  },
+                  form_id: {
+                    type: 'string',
+                    format: 'uuid',
+                  },
+                  date_of_sale: {
+                    type: 'string',
+                    format: 'date',
+                  },
+                  invoice_number: {
+                    type: 'string',
+                  },
+                  vendor_name: {
+                    type: 'string',
+                  },
+                  cigar_description: {
+                    type: 'string',
+                  },
+                  number_of_cigars: {
+                    type: 'integer',
+                  },
+                  cost_of_cigar: {
+                    type: 'number',
+                    format: 'float',
+                  },
+                  subtotal: {
+                    type: 'number',
+                    format: 'float',
+                  },
+                  tax_rate: {
+                    type: 'number',
+                    format: 'float',
+                  },
+                  tax_amount: {
+                    type: 'number',
+                    format: 'float',
+                  },
+                  entry_index: {
+                    type: 'integer',
+                  },
+                  created_at: {
+                    type: 'string',
+                    format: 'date-time',
+                  },
+                  updated_at: {
+                    type: 'string',
+                    format: 'date-time',
+                  },
+                },
+              },
+            },
+          },
+        },
+        '401': {
+          description: 'Unauthorized',
+        },
+        '403': {
+          description: 'Forbidden',
+        },
+        '404': {
+          description: 'Entry not found',
+        },
+        '500': {
+          description: 'Server error',
+        },
+      },
+    },
+    put: {
+      summary: 'Update an entry',
+      tags: ['Entries'],
+      description: 'Update an existing sales entry',
+      security: [{ BearerAuth: [] }],
+      parameters: [
+        {
           name: 'id',
           in: 'path',
           required: true,
-          description: 'ID of the entry to update',
+          description: 'ID of the form',
+          schema: {
+            type: 'string',
+            format: 'uuid',
+          },
+        },
+        {
+          name: 'entryId',
+          in: 'path',
+          required: true,
+          description: 'ID of the entry',
           schema: {
             type: 'string',
             format: 'uuid',
@@ -1894,34 +2199,22 @@ const createOpenAPISpec = () => {
                 date_of_sale: {
                   type: 'string',
                   format: 'date',
-                  description: 'Date when the sale occurred',
-                  example: '2023-06-15',
                 },
                 invoice_number: {
                   type: 'string',
-                  description: 'Reference invoice number',
-                  example: 'INV-12345',
                 },
                 vendor_name: {
                   type: 'string',
-                  description: 'Name of vendor',
-                  example: 'Premium Cigars Inc.',
                 },
                 cigar_description: {
                   type: 'string',
-                  description: 'Description of cigar product',
-                  example: 'Handmade Corona Medium',
                 },
                 number_of_cigars: {
                   type: 'integer',
-                  description: 'Quantity sold',
-                  example: 50,
                 },
                 cost_of_cigar: {
                   type: 'number',
                   format: 'float',
-                  description: 'Base cost in USD',
-                  example: 5.75,
                 },
               },
             },
@@ -1998,7 +2291,7 @@ const createOpenAPISpec = () => {
           description: 'Forbidden',
         },
         '404': {
-          description: 'Form or entry not found',
+          description: 'Entry not found',
         },
         '500': {
           description: 'Server error',
@@ -2006,13 +2299,13 @@ const createOpenAPISpec = () => {
       },
     },
     delete: {
-      summary: 'Delete a sales entry',
+      summary: 'Delete an entry',
       tags: ['Entries'],
-      description: 'Delete an existing sales entry',
+      description: 'Delete a specific sales entry',
       security: [{ BearerAuth: [] }],
       parameters: [
         {
-          name: 'formId',
+          name: 'id',
           in: 'path',
           required: true,
           description: 'ID of the form',
@@ -2022,10 +2315,10 @@ const createOpenAPISpec = () => {
           },
         },
         {
-          name: 'id',
+          name: 'entryId',
           in: 'path',
           required: true,
-          description: 'ID of the entry to delete',
+          description: 'ID of the entry',
           schema: {
             type: 'string',
             format: 'uuid',
@@ -2043,98 +2336,7 @@ const createOpenAPISpec = () => {
           description: 'Forbidden',
         },
         '404': {
-          description: 'Form or entry not found',
-        },
-        '500': {
-          description: 'Server error',
-        },
-      },
-    },
-  };
-
-  spec.paths['/api/v1/forms/{id}/entries/bulk'] = {
-    post: {
-      summary: 'Bulk import entries',
-      tags: ['Entries'],
-      description: 'Bulk import entries from CSV/Excel file',
-      security: [{ BearerAuth: [] }],
-      parameters: [
-        {
-          name: 'id',
-          in: 'path',
-          required: true,
-          description: 'ID of the form',
-          schema: {
-            type: 'string',
-            format: 'uuid',
-          },
-        },
-      ],
-      requestBody: {
-        required: true,
-        content: {
-          'multipart/form-data': {
-            schema: {
-              type: 'object',
-              properties: {
-                file: {
-                  type: 'string',
-                  format: 'binary',
-                  description: 'CSV or Excel file with entries data',
-                },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        '201': {
-          description: 'Entries imported successfully',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  imported: {
-                    type: 'integer',
-                    description: 'Number of successfully imported entries',
-                  },
-                  failed: {
-                    type: 'integer',
-                    description: 'Number of entries that failed to import',
-                  },
-                  errors: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        row: {
-                          type: 'integer',
-                          description: 'Row number in the file',
-                        },
-                        message: {
-                          type: 'string',
-                          description: 'Error message',
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        '400': {
-          description: 'Invalid file or file format',
-        },
-        '401': {
-          description: 'Unauthorized',
-        },
-        '403': {
-          description: 'Forbidden',
-        },
-        '404': {
-          description: 'Form not found',
+          description: 'Entry not found',
         },
         '500': {
           description: 'Server error',
@@ -2149,11 +2351,7 @@ const createOpenAPISpec = () => {
       summary: 'Debug authentication issues',
       tags: ['Forms'],
       description: 'Provides detailed information about the authentication process',
-      security: [
-        {
-          BearerAuth: []
-        }
-      ],
+      security: [{ BearerAuth: [] }],
       responses: {
         '200': {
           description: 'Debug information',
@@ -2212,6 +2410,9 @@ const createOpenAPISpec = () => {
       }
     }
   };
+  
+  // Remove incorrect path mapping that doesn't match the actual implementation
+  delete spec.paths['/api/v1/forms/{formId}/entries/{id}'];
   
   return spec;
 };

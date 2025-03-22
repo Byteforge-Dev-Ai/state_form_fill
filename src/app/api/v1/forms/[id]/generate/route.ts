@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser } from '@/lib/auth/middleware';
+import { authenticateUser } from '@/lib/auth';
 import { createFormService } from '@/lib/factories/serviceFactory';
 import { z } from 'zod';
 

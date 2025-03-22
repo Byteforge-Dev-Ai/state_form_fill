@@ -5,6 +5,10 @@ import { SupabaseUserIdentifierRepository } from '../repositories/supabase/userI
 import { UserIdentifierService } from '../services/userIdentifierService';
 import { SupabaseFormRepository } from '../repositories/supabase/formRepository';
 import { FormService } from '../services/formService';
+import { SupabaseFormEntryRepository } from '../repositories/supabase/formEntryRepository';
+import { FormEntryService } from '../services/formEntryService';
+import { SupabaseTaxRateRepository } from '../repositories/supabase/taxRateRepository';
+import { TaxRateService } from '../services/taxRateService';
 
 // Export factory function for UserService
 export function createUserService(): UserService {
@@ -22,4 +26,16 @@ export function createUserIdentifierService(): UserIdentifierService {
 export function createFormService(): FormService {
   const formRepository = new SupabaseFormRepository(supabaseClient);
   return new FormService(formRepository);
+}
+
+// Export factory function for FormEntryService
+export function createFormEntryService(): FormEntryService {
+  const formEntryRepository = new SupabaseFormEntryRepository(supabaseClient);
+  return new FormEntryService(formEntryRepository);
+}
+
+// Export factory function for TaxRateService
+export function createTaxRateService(): TaxRateService {
+  const taxRateRepository = new SupabaseTaxRateRepository(supabaseClient);
+  return new TaxRateService(taxRateRepository);
 } 

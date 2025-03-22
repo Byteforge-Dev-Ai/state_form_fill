@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser } from '@/lib/auth/middleware';
+import { authenticateUser } from '@/lib/auth';
 import { supabaseClient } from '@/lib/supabase/client';
 
 /**

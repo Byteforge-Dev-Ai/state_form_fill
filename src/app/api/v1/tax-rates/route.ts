@@ -1,4 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { authenticateUser, requirePermission } from '@/lib/auth';
+import { createTaxRateService } from '@/lib/factories/serviceFactory';
 
 /**
  * @swagger
@@ -73,39 +75,38 @@ import { NextResponse } from 'next/server';
  *       500:
  *         description: Server error
  */
-export async function GET() {
-  // For demo purposes, return a mock response
-  return NextResponse.json({
-    current_rate: {
-      id: "550e8400-e29b-41d4-a716-446655440000",
-      rate: 0.0595,
-      multiplier: 1.12,
-      effective_from: "2024-01-01",
-      effective_to: null,
-      created_at: "2023-12-15T14:30:00Z",
-      created_by: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
-    },
-    previous_rates: [
-      {
-        id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-        rate: 0.0525,
-        multiplier: 1.10,
-        effective_from: "2023-01-01",
-        effective_to: "2023-12-31",
-        created_at: "2022-12-10T09:00:00Z",
-        created_by: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
-      },
-      {
-        id: "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
-        rate: 0.0500,
-        multiplier: 1.08,
-        effective_from: "2022-01-01",
-        effective_to: "2022-12-31",
-        created_at: "2021-12-15T11:30:00Z",
-        created_by: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
-      }
-    ]
-  });
+export async function GET(request: NextRequest) {
+  try {
+    // Authenticate user
+    const user = await authenticateUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { status: 401, message: 'Unauthorized', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      );
+    }
+
+    // Get tax rates
+    const taxRateService = createTaxRateService();
+    const currentRate = await taxRateService.getCurrent();
+    const allRates = await taxRateService.getAll();
+    
+    // Filter and sort previous rates
+    const previousRates = allRates
+      .filter(rate => rate.id !== currentRate.id)
+      .sort((a, b) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+    
+    return NextResponse.json({
+      current_rate: currentRate,
+      previous_rates: previousRates
+    });
+  } catch (error) {
+    console.error('Failed to fetch tax rates:', error);
+    return NextResponse.json(
+      { status: 500, message: 'Failed to fetch tax rates', code: 'TAX_RATE_FETCH_FAILED' },
+      { status: 500 }
+    );
+  }
 }
 
 /**
@@ -182,20 +183,46 @@ export async function GET() {
  *       500:
  *         description: Server error
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Authenticate user
+    const user = await authenticateUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { status: 401, message: 'Unauthorized', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      );
+    }
+    
+    // Check for admin permission
+    const hasPermission = await requirePermission('tax:write')(request, null, () => true);
+    if (!hasPermission) {
+      return NextResponse.json(
+        { status: 403, message: 'Forbidden - Admin access required', code: 'FORBIDDEN' },
+        { status: 403 }
+      );
+    }
+    
+    // Parse request body
     const body = await request.json();
     
-    // For demo purposes, return a mock response
-    return NextResponse.json({
-      id: "34e7b810-9dad-11d1-80b4-00c04fd430c8",
+    // Validate request body
+    if (!body.rate || !body.multiplier || !body.effective_from) {
+      return NextResponse.json(
+        { status: 400, message: 'Missing required fields', code: 'MISSING_REQUIRED_FIELDS' },
+        { status: 400 }
+      );
+    }
+    
+    // Create new tax rate
+    const taxRateService = createTaxRateService();
+    const newRate = await taxRateService.create(user.id, {
       rate: body.rate,
       multiplier: body.multiplier,
-      effective_from: body.effective_from,
-      effective_to: null,
-      created_at: new Date().toISOString(),
-      created_by: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
-    }, { status: 201 });
+      effective_from: body.effective_from
+    });
+    
+    return NextResponse.json(newRate, { status: 201 });
   } catch (error) {
     console.error('Error creating tax rate:', error);
     return NextResponse.json({ 

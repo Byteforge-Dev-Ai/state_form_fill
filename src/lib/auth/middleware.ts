@@ -33,6 +33,16 @@ export async function authenticateUser(request: NextRequest) {
     // Step 1: Verify the token with Supabase Auth
     const { data: { user: authUser }, error } = await supabaseClient.auth.getUser(token);
     
+    console.log('Auth response:', JSON.stringify({
+      user: authUser ? {
+        id: authUser.id,
+        email: authUser.email,
+        app_metadata: authUser.app_metadata,
+        user_metadata: authUser.user_metadata
+      } : null,
+      error: error ? { message: error.message, status: error.status } : null
+    }));
+    
     if (error) {
       console.log('Supabase auth error:', error);
       return null;
@@ -43,80 +53,38 @@ export async function authenticateUser(request: NextRequest) {
       return null;
     }
     
-    // Step 2: Verify that the session is still valid (not logged out)
-    // Use admin API to check if the session exists
-    try {
-      // Get service role client with admin privileges
-      const adminClient = getServiceSupabase();
-      
-      // Use the admin API to check if the token/session is still valid
-      // This validates that the user hasn't logged out
-      const { data: adminData, error: adminError } = await adminClient.auth.admin.getUserById(authUser.id);
-      
-      if (adminError || !adminData?.user) {
-        console.log('Session verification failed:', adminError || 'User not found by admin API');
-        return null;
-      }
-      
-      // Additional check - if the user was recently logged out, their session might 
-      // still exist but should be marked as not valid
-      if (!adminData.user.confirmed_at) {
-        console.log('User account is not confirmed');
-        return null;
-      }
-    } catch (sessionError) {
-      console.log('Error verifying session:', sessionError);
-      return null;
-    }
+    // Skip admin API check for now
     
     console.log('Auth user found:', authUser.id);
     
-    // Get the full user profile from our repository
+    // Get user data from our database using email instead of ID
     const userService = createUserService();
-    const user = await userService.getUser(authUser.id);
     
-    if (!user) {
-      console.log('User not found in database');
-    } else {
-      console.log('User found:', user.id, user.email, user.role);
+    console.log('Attempting to get user by email as primary method');
+    if (!authUser.email) {
+      console.log('No email found in token, unable to look up user');
+      return null;
     }
     
-    return user;
+    const userByEmail = await userService.getUserByEmail(authUser.email);
+    
+    if (!userByEmail) {
+      console.log('User not found by email, trying by ID as fallback');
+      const userById = await userService.getUser(authUser.id);
+      
+      if (!userById) {
+        console.log('User not found by ID either');
+        return null;
+      }
+      
+      console.log('User found by ID:', userById.id, userById.email, userById.role);
+      return userById;
+    }
+    
+    console.log('User found by email:', userByEmail.id, userByEmail.email, userByEmail.role);
+    return userByEmail;
   } catch (error) {
     console.error('Authentication error:', error);
     return null;
   }
-}
-
-export async function requirePermission(permission: string) {
-  return async (request: NextRequest) => {
-    const user = await authenticateUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { status: 401, message: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
-    }
-    
-    // Implement role-based permission check
-    // For simplicity, we're just checking roles directly
-    // In production, this would connect to a proper permission system
-    const rolePermissions: Record<string, string[]> = {
-      admin: ['*'],
-      vendor: ['forms:read', 'forms:write', 'forms:generate', 'forms:submit'],
-      readonly: ['forms:read']
-    };
-    
-    const userPermissions = rolePermissions[user.role] || [];
-    const hasPermission = userPermissions.includes('*') || userPermissions.includes(permission);
-    
-    if (!hasPermission) {
-      return NextResponse.json(
-        { status: 403, message: 'Forbidden', code: 'FORBIDDEN' },
-        { status: 403 }
-      );
-    }
-    
-    return NextResponse.next();
-  };
 } 

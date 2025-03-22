@@ -44,7 +44,7 @@ export class SupabaseFormRepository implements FormRepository {
         *,
         user_identifier:user_identifiers(legal_name, nc_dor_id)
       `, { count: 'exact' })
-      .eq('user_identifiers.user_id', userId);
+      .eq('user_identifier.user_id', userId);
 
     // Add filters if provided
     if (options?.status) {
@@ -85,26 +85,50 @@ export class SupabaseFormRepository implements FormRepository {
   }
 
   async getById(id: string, userId: string): Promise<FormSubmission | null> {
-    const { data, error } = await this.supabase
-      .from('form_submissions')
-      .select(`
-        *,
-        user_identifier:user_identifiers(*)
-      `)
-      .eq('id', id)
-      .eq('user_identifiers.user_id', userId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // Record not found
+    try {
+      // First, fetch the form entry
+      const { data: form, error: formError } = await this.supabase
+        .from('form_submissions')
+        .select('*')
+        .eq('id', id)
+        .single();
+        
+      if (formError) {
+        if (formError.code === 'PGRST116') {
+          // Record not found
+          return null;
+        }
+        throw new Error(`Failed to fetch form: ${formError.message}`);
+      }
+      
+      if (!form) {
         return null;
       }
-      console.error('Error fetching form:', error);
-      throw new Error(`Failed to fetch form: ${error.message}`);
+      
+      // Next, verify that the form belongs to the user by checking the user_identifier
+      const { data: userIdentifier, error: userIdentifierError } = await this.supabase
+        .from('user_identifiers')
+        .select('*')
+        .eq('id', form.user_identifier_id)
+        .eq('user_id', userId)
+        .single();
+        
+      if (userIdentifierError || !userIdentifier) {
+        if (userIdentifierError && userIdentifierError.code !== 'PGRST116') {
+          console.error('Error verifying form ownership:', userIdentifierError);
+        }
+        return null;
+      }
+      
+      // Form belongs to the user, return it with the user_identifier data
+      return {
+        ...form,
+        user_identifier: userIdentifier
+      };
+    } catch (error) {
+      console.error('Error in getById:', error);
+      throw error;
     }
-
-    return data;
   }
 
   async create(

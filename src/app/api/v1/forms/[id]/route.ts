@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser } from '@/lib/auth/middleware';
+import { authenticateUser } from '@/lib/auth';
 import { createFormService } from '@/lib/factories/serviceFactory';
 import { updateFormSchema } from '@/lib/validators/formValidator';
 import { ZodError } from 'zod';
@@ -35,24 +35,58 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Authenticate user
-  const user = await authenticateUser(request);
-  if (!user) {
-    return NextResponse.json(
-      { status: 401, message: 'Unauthorized', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    );
-  }
-
-  const { id } = params;
-  if (!id) {
-    return NextResponse.json(
-      { status: 400, message: 'Missing form ID', code: 'MISSING_ID' },
-      { status: 400 }
-    );
-  }
-
   try {
+    // Get authorization header
+    const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json(
+        { status: 401, message: 'Unauthorized', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      );
+    }
+    
+    // Extract token from header
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Verify token with Supabase
+    const { supabaseClient } = await import('@/lib/supabase/client');
+    const { data: { user: authUser }, error: authError } = await supabaseClient.auth.getUser(token);
+    
+    if (authError || !authUser) {
+      return NextResponse.json(
+        { status: 401, message: 'Invalid token', code: 'INVALID_TOKEN' },
+        { status: 401 }
+      );
+    }
+    
+    // Get user data from our database using email instead of ID
+    const { createUserService, createFormService } = await import('@/lib/factories/serviceFactory');
+    const userService = createUserService();
+    
+    if (!authUser.email) {
+      return NextResponse.json(
+        { status: 400, message: 'User email is missing', code: 'EMAIL_MISSING' },
+        { status: 400 }
+      );
+    }
+    
+    const user = await userService.getUserByEmail(authUser.email);
+    
+    if (!user) {
+      return NextResponse.json(
+        { status: 404, message: 'User not found', code: 'USER_NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    const { id } = params;
+    if (!id) {
+      return NextResponse.json(
+        { status: 400, message: 'Missing form ID', code: 'MISSING_ID' },
+        { status: 400 }
+      );
+    }
+
     // Get the specific form
     const formService = createFormService();
     const form = await formService.getById(id, user.id);

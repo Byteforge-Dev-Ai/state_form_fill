@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser } from '@/lib/auth/middleware';
+import { authenticateUser } from '@/lib/auth';
 import { createUserIdentifierService } from '@/lib/factories/serviceFactory';
 import { updateUserIdentifierSchema } from '@/lib/validators/userIdentifierValidator';
 import { ZodError } from 'zod';
